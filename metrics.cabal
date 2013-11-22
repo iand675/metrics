@@ -81,4 +81,4 @@ test-suite             tests
                        primitive,
                        lens >= 3.10 && < 4
   default-language:    Haskell2010
-  ghc-options:         -O2 -rtsopts -threaded -with-rtsopts=-N -fprof-auto -prof
+  ghc-options:         -O2 -rtsopts -threaded -with-rtsopts=-N
