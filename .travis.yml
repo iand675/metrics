@@ -1,0 +1,4 @@
+language: haskell
+notifications:
+  flowdock: 74acf1309243594ea69a236e36946c26
+  email: false
