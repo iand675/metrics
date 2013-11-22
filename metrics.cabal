@@ -73,7 +73,7 @@ test-suite             tests
   hs-source-dirs:      tests
   type:                exitcode-stdio-1.0
   build-depends:       base >= 4.6 && <5,
-                       submarine-metrics,
+                       metrics,
                        async,
                        mwc-random >= 0.13,
                        unix,
