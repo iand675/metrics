@@ -28,9 +28,6 @@ import Data.Metrics.Registry
 import Data.Metrics.Timer
 import Data.Metrics.Types
 
---newMetricRegistry :: IO (MetricRegistry IO)
---newMetricRegistry = fmap MetricRegistry $ newMVar H.empty
-
 {-
 getOrInit :: (Typeable a, MetricOutput a) => MetricRegistry -> Text -> a -> IO (Maybe (IORef a))
 getOrInit r name conv defaultValue = do

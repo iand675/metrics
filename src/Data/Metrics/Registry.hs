@@ -4,6 +4,8 @@ module Data.Metrics.Registry (
   MetricRegistry,
   Metric(..),
   Register(..),
+  metrics,
+  newMetricRegistry,
   module Data.Metrics.Types
 ) where
 import Control.Concurrent.MVar
@@ -15,6 +17,10 @@ import Data.Metrics.Meter
 import Data.Metrics.Timer
 import Data.Metrics.Types
 import Data.Text (Text)
+
+-- | Initializes a new metric registry.
+newMetricRegistry :: IO (MetricRegistry IO)
+newMetricRegistry = fmap MetricRegistry $ newMVar H.empty
 
 -- | A container that tracks all metrics registered with it.
 -- All forms of metrics share the same namespace in the registry.
