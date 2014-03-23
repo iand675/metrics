@@ -1,8 +1,8 @@
 machine:
   environment:
     PATH: $HOME/.cabal/bin:$HOME/installs:$PATH
-	pre:
-		- cd ~ && wget https://www.haskell.org/ghc/dist/7.8.1-rc2/ghc-7.8.0.20140228-x86_64-unknown-linux-deb7.tar.xz
+  pre:
+    - cd ~ && wget https://www.haskell.org/ghc/dist/7.8.1-rc2/ghc-7.8.0.20140228-x86_64-unknown-linux-deb7.tar.xz
     - tar -xJf ghc-7.8.0.20140228-x86_64-unknown-linux-deb7.tar.xz
     - mkdir ~/installs
     - cd ghc-7.8.0.20140228 && ./configure --prefix=$HOME/installs && make install
