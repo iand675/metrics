@@ -9,10 +9,15 @@ machine:
     - cd ~ && wget http://hackage.haskell.org/package/cabal-install-1.18.0.3/cabal-install-1.18.0.3.tar.gz
     - tar -xzf cabal-install-1.18.0.3.tar.gz
     - cd cabal-install-1.18.0.3 && sh ./bootstrap.sh
+dependencies:
+  cache_directories:
+    - "~/installs"
 test:
   override:
+    - which ghc
+    - ghc --version
+    - cabal install --only-dependencies -j
     - cabal configure
     - cabal update
-    - cabal install --only-dependencies -j
     - cabal build -j
     - cabal test
