@@ -57,3 +57,4 @@ data StatusReport = StatusReport
 -- | Create a health check.
 healthCheck :: Text -> IO StatusReport -> HealthCheck
 healthCheck = flip HealthCheck
+
