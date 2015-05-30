@@ -25,11 +25,11 @@ Areas that could use contributions:
 * Any area that's missing parity with the Java library & makes sense for Haskell
 * Examples in the docs
 * More reporters! Would pretty much auto-merge support for:
+  - [ ] [Datadog](https://github.com/iand675/datadog)
   - [ ] StatsD
   - [ ] Riemann
   - [ ] Librato
   - [ ] Graphite
-  - [ ] Datadog
   - [ ] InfluxDB
   - [ ] ... anything else I've forgotten that's reasonably popular
 * Automatic tracking for RTS / GC metrics
