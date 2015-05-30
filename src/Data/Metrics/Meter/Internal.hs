@@ -21,24 +21,24 @@ import Data.Time.Clock
 import qualified Data.Metrics.MovingAverage as M
 
 data Meter = Meter
-  { _meterCount :: !Int
-  , _meterOneMinuteRate :: !M.MovingAverage
-  , _meterFiveMinuteRate :: !M.MovingAverage
-  , _meterFifteenMinuteRate :: !M.MovingAverage
-  , _meterStartTime :: !NominalDiffTime
-  , _meterLastTick :: !NominalDiffTime
+  { meterCount             :: !Int
+  , meterOneMinuteRate     :: !M.MovingAverage
+  , meterFiveMinuteRate    :: !M.MovingAverage
+  , meterFifteenMinuteRate :: !M.MovingAverage
+  , meterStartTime         :: !NominalDiffTime
+  , meterLastTick          :: !NominalDiffTime
   }
 
 makeFields ''Meter
 
 meterData :: (Int -> M.MovingAverage) -> NominalDiffTime -> Meter
 meterData f t = Meter
-  { _meterCount = 0
-  , _meterOneMinuteRate = f 1
-  , _meterFiveMinuteRate = f 5
-  , _meterFifteenMinuteRate = f 15
-  , _meterStartTime = t
-  , _meterLastTick = t
+  { meterCount = 0
+  , meterOneMinuteRate = f 1
+  , meterFiveMinuteRate = f 5
+  , meterFifteenMinuteRate = f 15
+  , meterStartTime = t
+  , meterLastTick = t
   }
 
 -- TODO: make moving average prism
@@ -67,27 +67,28 @@ tick = (oneMinuteRate %~ M.tick) . (fiveMinuteRate %~ M.tick) . (fifteenMinuteRa
 
 tickIfNecessary :: NominalDiffTime -> Meter -> Meter
 tickIfNecessary new d = if age >= 5
-  then iterate tick (d { _meterLastTick = latest }) !! (truncate age `div` 5)
+  then iterate tick (d { meterLastTick = latest }) !! (truncate age `div` 5)
   else d
   where
-    age = new - _meterLastTick d
-    swapped = _meterLastTick d < new
-    latest = Prelude.max (_meterLastTick d) new
+    age = new - meterLastTick d
+    swapped = meterLastTick d < new
+    latest = Prelude.max (meterLastTick d) new
 
 meanRate :: NominalDiffTime -> Meter -> Double
 meanRate t d = if c == 0
   then 0
   else fromIntegral c / fromIntegral elapsed
   where
-    c = _meterCount d
-    start = _meterStartTime d
+    c = meterCount d
+    start = meterStartTime d
     elapsed = fromEnum t - fromEnum start
 
 oneMinuteAverage :: Meter -> M.MovingAverage
-oneMinuteAverage = _meterOneMinuteRate
+oneMinuteAverage = meterOneMinuteRate
 
 fiveMinuteAverage :: Meter -> M.MovingAverage
-fiveMinuteAverage = _meterFiveMinuteRate
+fiveMinuteAverage = meterFiveMinuteRate
 
 fifteenMinuteAverage :: Meter -> M.MovingAverage
-fifteenMinuteAverage = _meterFifteenMinuteRate
+fifteenMinuteAverage = meterFifteenMinuteRate
+

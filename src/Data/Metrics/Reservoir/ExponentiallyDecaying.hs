@@ -1,3 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE Rank2Types #-}
 -- | A histogram with an exponentially decaying reservoir produces quantiles which are representative of (roughly) the last five minutes of data.
 -- It does so by using a forward-decaying priority reservoir with an exponential weighting towards newer data.
@@ -13,13 +19,15 @@ module Data.Metrics.Reservoir.ExponentiallyDecaying (
   rescale,
   update
 ) where
+import Control.Lens
+import Control.Lens.TH
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Metrics.Internal
+import qualified Data.Map as M
 import qualified Data.Metrics.Reservoir as R
-import qualified Data.Map.Strict as M
 import Data.Metrics.Snapshot (Snapshot(..), takeSnapshot)
 import Data.Primitive.MutVar
 import qualified Data.Vector.Unboxed as V
@@ -29,22 +37,24 @@ import System.Posix.Types
 import System.Random.MWC
 
 -- hours in seconds
-rescaleThreshold :: Word64
-rescaleThreshold = 60 * 60
+baseRescaleThreshold :: Word64
+baseRescaleThreshold = 60 * 60
 
 -- | A forward-decaying priority reservoir
 --
 -- <http://dimacs.rutgers.edu/~graham/pubs/papers/fwddecay.pdf>
 data ExponentiallyDecayingReservoir = ExponentiallyDecayingReservoir
-  { _edrSize :: !Int
-  , _edrAlpha :: !Double
-  , _edrRescaleThreshold :: !Word64
-  , _edrReservoir :: !(M.Map Double Double)
-  , _edrCount :: !Int
-  , _edrStartTime :: !Word64
-  , _edrNextScaleTime :: !Word64
-  , _edrSeed :: !Seed
+  { exponentiallyDecayingReservoirInnerSize        :: {-# UNPACK #-} !Int
+  , exponentiallyDecayingReservoirAlpha            :: {-# UNPACK #-} !Double
+  , exponentiallyDecayingReservoirRescaleThreshold :: {-# UNPACK #-} !Word64
+  , exponentiallyDecayingReservoirInnerReservoir   :: {-# UNPACK #-} !(M.Map Double Double)
+  , exponentiallyDecayingReservoirCount            :: {-# UNPACK #-} !Int
+  , exponentiallyDecayingReservoirStartTime        :: {-# UNPACK #-} !Word64
+  , exponentiallyDecayingReservoirNextScaleTime    :: {-# UNPACK #-} !Word64
+  , exponentiallyDecayingReservoirSeed :: !Seed
   } deriving (Show)
+
+makeFields ''ExponentiallyDecayingReservoir
 
 -- | An exponentially decaying reservoir with an alpha value of 0.015 and a 1028 sample cap.
 --
@@ -59,24 +69,24 @@ reservoir :: Double -- ^ alpha value
   -> NominalDiffTime -- ^ creation time for the reservoir
   -> Seed -> R.Reservoir
 reservoir a r t s = R.Reservoir
-  { R._reservoirClear = clear
-  , R._reservoirSize = size
-  , R._reservoirSnapshot = snapshot
-  , R._reservoirUpdate = update
-  , R._reservoirState = ExponentiallyDecayingReservoir r a rescaleThreshold M.empty 0 c c' s
+  { R.reservoirClear = clear
+  , R.reservoirSize = size
+  , R.reservoirSnapshot = snapshot
+  , R.reservoirUpdate = update
+  , R.reservoirState = ExponentiallyDecayingReservoir r a baseRescaleThreshold M.empty 0 c c' s
   }
   where
     c = truncate t
-    c' = c + rescaleThreshold
+    c' = c + baseRescaleThreshold
 
 -- | Reset the reservoir
 clear :: NominalDiffTime -> ExponentiallyDecayingReservoir -> ExponentiallyDecayingReservoir
 clear = go
   where
-    go t c = c { _edrStartTime = t', _edrNextScaleTime = t'', _edrCount = 0, _edrReservoir = M.empty }
+    go t c = c & startTime .~ t' & nextScaleTime .~ t'' & count .~ 0 & innerReservoir .~ M.empty
       where
         t' = truncate t
-        t'' = t' + _edrRescaleThreshold c
+        t'' = t' + c ^. rescaleThreshold
 
 -- | Get the current size of the reservoir.
 size :: ExponentiallyDecayingReservoir -> Int
@@ -84,13 +94,13 @@ size = go
   where
     go r = min c s
       where
-        c = _edrCount r
-        s = _edrSize r
+        c = r ^. count
+        s = r ^. innerSize
 
 -- | Get a snapshot of the current reservoir
 snapshot :: ExponentiallyDecayingReservoir -> Snapshot
 snapshot r = runST $ do
-  let svals = V.fromList $ M.elems $ _edrReservoir $ r
+  let svals = V.fromList $ M.elems $ r ^. innerReservoir
   mvals <- V.unsafeThaw svals
   takeSnapshot mvals
 
@@ -115,20 +125,15 @@ weight alpha t = exp (alpha * fromIntegral t)
 -- landmark L′ (and then use this new L′ at query time). This can be done with
 -- a linear pass over whatever data structure is being used.\"
 rescale :: Word64 -> ExponentiallyDecayingReservoir -> ExponentiallyDecayingReservoir
-rescale now c = c
-  { _edrReservoir = adjustedReservoir
-  , _edrStartTime = now
-  , _edrCount = M.size adjustedReservoir
-  , _edrNextScaleTime = st
-  }
+rescale now c = c & startTime .~ now & nextScaleTime .~ st & count .~ M.size adjustedReservoir & innerReservoir .~ adjustedReservoir
   where
-    potentialScaleTime = now + rescaleThreshold
-    currentScaleTime = _edrNextScaleTime c
+    potentialScaleTime = now + baseRescaleThreshold
+    currentScaleTime = c ^. nextScaleTime
     st = if potentialScaleTime > currentScaleTime then potentialScaleTime else currentScaleTime
-    diff = now - _edrStartTime c
-    adjustKey x = x * exp (-alpha * fromIntegral diff)
-    adjustedReservoir = M.mapKeys adjustKey $ _edrReservoir c
-    alpha = _edrAlpha c
+    diff = now - c ^. startTime
+    adjustKey x = x * exp (-_alpha * fromIntegral diff)
+    adjustedReservoir = M.mapKeys adjustKey $ c ^. innerReservoir
+    _alpha = c ^. alpha
 
 -- | Insert a new sample into the reservoir. This may cause old sample values to be evicted
 -- based upon the probabilistic weighting given to the key at insertion time.
@@ -136,29 +141,25 @@ update :: Double -- ^ new sample value
   -> NominalDiffTime -- ^ time of update
   -> ExponentiallyDecayingReservoir
   -> ExponentiallyDecayingReservoir
-update v t c = rescaled
-  { _edrSeed = s'
-  , _edrCount = newCount
-  , _edrReservoir = addValue r
-  } 
+update v t c = rescaled & seed .~ s' & count .~ newCount & innerReservoir .~ addValue r
   where
-    rescaled = if seconds >= _edrNextScaleTime c
+    rescaled = if seconds >= c ^. nextScaleTime
       then rescale seconds c
       else c
     seconds = truncate t
-    priority = weight (_edrAlpha c) (seconds - _edrStartTime c) / priorityDenom
-    addValue r = if newCount <= _edrSize c
+    priority = weight (c ^. alpha) (seconds - c ^. startTime) / priorityDenom
+    addValue r = if newCount <= (c ^. innerSize)
       then M.insert priority v r
       else if firstKey < priority
         -- it should be safe to use head here since we are over our reservoir capacity at this point
         -- caveat: reservoir capped at 0 max size
         then M.delete firstKey $ M.insertWith const priority v r
         else r
-    r = _edrReservoir c
+    r = c ^. innerReservoir
     firstKey = head $ M.keys r
-    newCount = 1 + _edrCount c
+    newCount = 1 + c ^. count
     (priorityDenom, s') = runST $ do
-      g <- restore $ _edrSeed c
+      g <- restore $ c ^. seed
       p <- uniform g
       s' <- save g
       return (p :: Double, s')

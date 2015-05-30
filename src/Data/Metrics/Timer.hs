@@ -29,19 +29,19 @@ import System.Random.MWC
 -- | A measure of time statistics for the duration of an event
 data Timer m = Timer
   { fromTimer :: !(MutVar (PrimState m) P.Timer) -- ^ A reference to the pure timer internals
-  , _timerGetTime :: !(m NominalDiffTime) -- ^ The function that provides time differences for the timer. In practice, this is usually just "getPOSIXTime"
+  , timerGetTime :: !(m NominalDiffTime) -- ^ The function that provides time differences for the timer. In practice, this is usually just "getPOSIXTime"
   }
 
 makeFields ''Timer
 
 instance PrimMonad m => Clear m (Timer m) where
   clear t = do
-    ts <- _timerGetTime t
+    ts <- timerGetTime t
     updateRef (fromTimer t) $ P.clear ts
 
 instance PrimMonad m => Update m (Timer m) Double where
   update t x = do
-    ts <- _timerGetTime t
+    ts <- timerGetTime t
     updateRef (fromTimer t) $ P.update ts x
 
 instance PrimMonad m => Count m (Timer m) where
@@ -56,16 +56,16 @@ instance (Functor m, PrimMonad m) => Statistics m (Timer m) where
 
 instance PrimMonad m => Rate m (Timer m) where
   oneMinuteRate t = do
-    ts <- _timerGetTime t
+    ts <- timerGetTime t
     updateAndApplyToRef (fromTimer t) (P.tickIfNecessary ts) P.oneMinuteRate
   fiveMinuteRate t = do
-    ts <- _timerGetTime t
+    ts <- timerGetTime t
     updateAndApplyToRef (fromTimer t) (P.tickIfNecessary ts) P.fiveMinuteRate
   fifteenMinuteRate t = do
-    ts <- _timerGetTime t
+    ts <- timerGetTime t
     updateAndApplyToRef (fromTimer t) (P.tickIfNecessary ts) P.fifteenMinuteRate
   meanRate t = do
-    ts <- _timerGetTime t
+    ts <- timerGetTime t
     applyWithRef (fromTimer t) (P.meanRate ts)
 
 instance PrimMonad m => TakeSnapshot m (Timer m) where

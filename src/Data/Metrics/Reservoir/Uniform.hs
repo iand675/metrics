@@ -1,3 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 -- | A histogram with a uniform reservoir produces quantiles which are valid for the entirely of the histogram’s lifetime.
 -- It will return a median value, for example, which is the median of all the values the histogram has ever been updated with.
 -- It does this by using an algorithm called Vitter’s R), which randomly selects values for the reservoir with linearly-decreasing probability.
@@ -15,6 +21,8 @@ module Data.Metrics.Reservoir.Uniform (
   update,
   unsafeUpdate
 ) where
+import Control.Lens
+import Control.Lens.TH
 import Control.Monad.ST
 import Data.Metrics.Internal
 import Data.Time.Clock
@@ -25,16 +33,27 @@ import System.Random.MWC
 import qualified Data.Vector.Unboxed as I
 import qualified Data.Vector.Unboxed.Mutable as V
 
+-- | A reservoir in which all samples are equally likely to be evicted when the reservoir is at full capacity.
+--
+-- This is conceptually simpler than the "ExponentiallyDecayingReservoir", but at the expense of providing a less accurate sample.
+data UniformReservoir = UniformReservoir
+  { uniformReservoirCount          :: {-# UNPACK #-} !Int
+  , uniformReservoirInnerReservoir :: {-# UNPACK #-} !(I.Vector Double)
+  , uniformReservoirSeed           :: {-# UNPACK #-} !Seed
+  }
+
+makeFields ''UniformReservoir
+
 -- | Make a safe uniform reservoir. This variant provides safe access at the expense of updates costing O(n)
 reservoir :: Seed
   -> Int -- ^ maximum reservoir size
   -> R.Reservoir
 reservoir g r = R.Reservoir
-  { R._reservoirClear = clear
-  , R._reservoirSize = size
-  , R._reservoirSnapshot = snapshot
-  , R._reservoirUpdate = update
-  , R._reservoirState = UniformReservoir 0 (I.replicate r 0) g
+  { R.reservoirClear = clear
+  , R.reservoirSize = size
+  , R.reservoirSnapshot = snapshot
+  , R.reservoirUpdate = update
+  , R.reservoirState = UniformReservoir 0 (I.replicate r 0) g
   }
 
 -- | Using this variant requires that you ensure that there is no sharing of the reservoir itself.
@@ -44,27 +63,18 @@ reservoir g r = R.Reservoir
 -- In return, updating the reservoir becomes an O(1) operation and clearing the reservoir avoids extra allocations.
 unsafeReservoir :: Seed -> Int -> R.Reservoir
 unsafeReservoir g r = R.Reservoir
-  { R._reservoirClear = unsafeClear
-  , R._reservoirSize = size
-  , R._reservoirSnapshot = snapshot
-  , R._reservoirUpdate = unsafeUpdate
-  , R._reservoirState = UniformReservoir 0 (I.replicate r 0) g
-  }
-
--- | A reservoir in which all samples are equally likely to be evicted when the reservoir is at full capacity.
---
--- This is conceptually simpler than the "ExponentiallyDecayingReservoir", but at the expense of providing a less accurate sample.
-data UniformReservoir = UniformReservoir
-  { _urCount :: !Int
-  , _urReservoir :: !(I.Vector Double)
-  , _urSeed :: !Seed
+  { R.reservoirClear = unsafeClear
+  , R.reservoirSize = size
+  , R.reservoirSnapshot = snapshot
+  , R.reservoirUpdate = unsafeUpdate
+  , R.reservoirState = UniformReservoir 0 (I.replicate r 0) g
   }
 
 -- | Reset the reservoir to empty.
 clear :: NominalDiffTime -> UniformReservoir -> UniformReservoir
 clear = go
   where
-    go _ c = c { _urCount = 0, _urReservoir = newRes $ _urReservoir c }
+    go _ c = c & count .~ 0 & innerReservoir %~ newRes
     newRes v = runST $ do
       v' <- I.thaw v
       V.set v' 0
@@ -74,7 +84,7 @@ clear = go
 unsafeClear :: NominalDiffTime -> UniformReservoir -> UniformReservoir
 unsafeClear = go
   where
-    go _ c = c { _urCount = 0, _urReservoir = newRes $ _urReservoir c }
+    go _ c = c & count .~ 0 & innerReservoir %~ newRes
     newRes v = runST $ do
       v' <- I.unsafeThaw v
       V.set v' 0
@@ -84,7 +94,7 @@ unsafeClear = go
 size :: UniformReservoir -> Int
 size = go
   where
-    go c = min (_urCount c) (I.length $ _urReservoir c)
+    go c = min (c ^. count) (I.length $ c ^. innerReservoir)
 
 -- | Take a snapshot of the reservoir by doing an in-place unfreeze.
 --
@@ -93,21 +103,21 @@ snapshot :: UniformReservoir -> S.Snapshot
 snapshot = go
   where
     go c = runST $ do
-      v' <- I.unsafeThaw $ _urReservoir c
+      v' <- I.unsafeThaw $ c ^. innerReservoir
       S.takeSnapshot $ V.slice 0 (size c) v'
 
 -- | Perform an update of the reservoir by copying the internal vector. O(n)
 update :: Double -> NominalDiffTime -> UniformReservoir -> UniformReservoir
 update = go
   where
-    go x _ c = c { _urCount = newCount, _urReservoir = newRes, _urSeed = newSeed }
+    go x _ c = c & count .~ newCount & innerReservoir .~ newRes & seed .~ newSeed
       where
-        newCount = succ $ _urCount c
+        newCount = c ^. count . to succ
         (newSeed, newRes) = runST $ do
-          v' <- I.thaw $ _urReservoir c
-          g <- restore (_urSeed c)
+          v' <- I.thaw $ c ^. innerReservoir
+          g <- restore $ c ^. seed
           if newCount <= V.length v'
-            then V.unsafeWrite v' (_urCount c) x
+            then V.unsafeWrite v' (c ^. count) x
             else do
               i <- uniformR (0, newCount) g
               if i < V.length v'
@@ -121,14 +131,14 @@ update = go
 unsafeUpdate :: Double -> NominalDiffTime -> UniformReservoir -> UniformReservoir
 unsafeUpdate = go
   where
-    go x _ c = c { _urCount = newCount, _urReservoir = newRes, _urSeed = newSeed }
+    go x _ c = c & count .~ newCount & innerReservoir .~ newRes & seed .~ newSeed
       where
-        newCount = succ $ _urCount c
+        newCount = c ^. count . to succ
         (newSeed, newRes) = runST $ do
-          v' <- I.unsafeThaw $ _urReservoir c
-          g <- restore (_urSeed c)
+          v' <- I.unsafeThaw $ c ^. innerReservoir
+          g <- restore (uniformReservoirSeed c)
           if newCount <= V.length v'
-            then V.unsafeWrite v' (_urCount c) x
+            then V.unsafeWrite v' (c ^. count) x
             else do
               i <- uniformR (0, newCount) g
               if i < V.length v'
@@ -137,3 +147,4 @@ unsafeUpdate = go
           v'' <- I.unsafeFreeze v'
           s <- save g
           return (s, v'')
+

@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 -- | An exponentially-weighted moving average.
 --
 -- see /UNIX Load Average Part 1: How It Works/:
@@ -38,11 +39,11 @@ import Data.Metrics.Types (Minutes)
 --
 -- This type encapsulates the state needed for the exponentially weighted "MovingAverage" implementation.
 data ExponentiallyWeightedMovingAverage = ExponentiallyWeightedMovingAverage
-  { _ewmaUncounted :: !Double
-  , _ewmaCurrentRate :: !Double
-  , _ewmaInitialized :: !Bool
-  , _ewmaInterval :: !Double
-  , _ewmaAlpha :: !Double
+  { exponentiallyWeightedMovingAverageUncounted   :: !Double
+  , exponentiallyWeightedMovingAverageCurrentRate :: !Double
+  , exponentiallyWeightedMovingAverageInitialized :: !Bool
+  , exponentiallyWeightedMovingAverageInterval    :: !Double
+  , exponentiallyWeightedMovingAverageAlpha       :: !Double
   } deriving (Show)
 
 makeFields ''ExponentiallyWeightedMovingAverage

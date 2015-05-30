@@ -16,8 +16,8 @@ import qualified Data.Metrics.Meter.Internal as M
 import qualified Data.Metrics.Snapshot as S
 
 data Timer = Timer
-  { _timerMeter :: !M.Meter
-  , _timerHistogram :: !H.Histogram
+  { timerMeter :: !M.Meter
+  , timerHistogram :: !H.Histogram
   }
 
 makeFields ''Timer
@@ -26,19 +26,19 @@ tickIfNecessary :: NominalDiffTime -> Timer -> Timer
 tickIfNecessary t = meter %~ M.tickIfNecessary t
 
 snapshot :: Timer -> S.Snapshot
-snapshot = H.snapshot . _timerHistogram
+snapshot = H.snapshot . timerHistogram
 
 oneMinuteRate :: Timer -> Double
-oneMinuteRate = A.rate . M.oneMinuteAverage . _timerMeter
+oneMinuteRate = A.rate . M.oneMinuteAverage . timerMeter
 
 fiveMinuteRate :: Timer -> Double
-fiveMinuteRate = A.rate . M.fiveMinuteAverage . _timerMeter
+fiveMinuteRate = A.rate . M.fiveMinuteAverage . timerMeter
 
 fifteenMinuteRate :: Timer -> Double
-fifteenMinuteRate = A.rate . M.fifteenMinuteAverage . _timerMeter
+fifteenMinuteRate = A.rate . M.fifteenMinuteAverage . timerMeter
 
 meanRate :: NominalDiffTime -> Timer -> Double
-meanRate t = M.meanRate t . _timerMeter
+meanRate t = M.meanRate t . timerMeter
 
 count :: Timer -> Int
 count = H.count . view histogram
@@ -50,16 +50,17 @@ update :: NominalDiffTime -> Double -> Timer -> Timer
 update t x = (histogram %~ H.update x t) . (meter %~ M.mark t 1)
 
 mean :: Timer -> Double
-mean = H.mean . _timerHistogram
+mean = H.mean . timerHistogram
 
 stddev :: Timer -> Double
-stddev = H.stddev . _timerHistogram
+stddev = H.stddev . timerHistogram
 
 variance :: Timer -> Double
-variance = H.variance . _timerHistogram
+variance = H.variance . timerHistogram
 
 maxVal :: Timer -> Double
-maxVal = H.maxVal . _timerHistogram
+maxVal = H.maxVal . timerHistogram
 
 minVal :: Timer -> Double
-minVal = H.minVal . _timerHistogram
+minVal = H.minVal . timerHistogram
+

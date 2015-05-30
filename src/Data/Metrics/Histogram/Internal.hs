@@ -20,12 +20,12 @@ import Data.Metrics.Snapshot (Snapshot)
 
 -- | A pure histogram that maintains a bounded reservoir of samples and basic statistical data about the samples.
 data Histogram = Histogram
-  { _histogramReservoir :: !R.Reservoir
-  , _histogramCount :: !Int
-  , _histogramMinVal :: !Double
-  , _histogramMaxVal :: !Double
-  , _histogramSum :: !Double
-  , _histogramVariance :: !(Double, Double)
+  { histogramReservoir :: !R.Reservoir
+  , histogramCount :: !Int
+  , histogramMinVal :: !Double
+  , histogramMaxVal :: !Double
+  , histogramSum :: !Double
+  , histogramVariance :: !(Double, Double)
   }
 
 -- | Create a histogram using a custom reservoir.
@@ -40,12 +40,12 @@ clear :: NominalDiffTime -> Histogram -> Histogram
 clear = go
   where
     go t s = s
-      { _histogramReservoir = R.clear t $ _histogramReservoir s
-      , _histogramCount = 0
-      , _histogramMinVal = nan
-      , _histogramMaxVal = nan
-      , _histogramSum = 0
-      , _histogramVariance = (-1, 0)
+      { histogramReservoir = R.clear t $ histogramReservoir s
+      , histogramCount = 0
+      , histogramMinVal = nan
+      , histogramMaxVal = nan
+      , histogramSum = 0
+      , histogramVariance = (-1, 0)
       }
 
 -- | Update statistics and the reservoir with a new sample.
@@ -53,16 +53,16 @@ update :: Double -> NominalDiffTime -> Histogram -> Histogram
 update = go
   where
     go v t s = s
-      { _histogramReservoir = updatedReservoir
-      , _histogramCount = updatedCount
-      , _histogramMinVal = updateMin (_histogramMinVal s) v
-      , _histogramMaxVal = updateMax (_histogramMaxVal s) v
-      , _histogramSum = _histogramSum s + v
-      , _histogramVariance = updateVariance updatedCount v $ _histogramVariance s
+      { histogramReservoir = updatedReservoir
+      , histogramCount = updatedCount
+      , histogramMinVal = updateMin (histogramMinVal s) v
+      , histogramMaxVal = updateMax (histogramMaxVal s) v
+      , histogramSum = histogramSum s + v
+      , histogramVariance = updateVariance updatedCount v $ histogramVariance s
       }
       where 
-        updatedCount = succ $ _histogramCount s
-        updatedReservoir = R.update v t $ _histogramReservoir s
+        updatedCount = succ $ histogramCount s
+        updatedReservoir = R.update v t $ histogramReservoir s
 
 updateMin :: Double -> Double -> Double
 updateMin ox x = if isNaN ox || ox > x then x else ox
@@ -74,8 +74,8 @@ updateMax ox x = if isNaN ox || ox < x then x else ox
 mean :: Histogram -> Double
 mean = go
   where
-    go s = if _histogramCount s > 0
-      then _histogramSum s / fromIntegral (_histogramCount s)
+    go s = if histogramCount s > 0
+      then histogramSum s / fromIntegral (histogramCount s)
       else 0
 
 -- | Get the standard deviation of all samples.
@@ -83,9 +83,9 @@ stddev :: Histogram -> Double
 stddev = go
   where
     go s = if c > 0
-      then (calculateVariance c $ snd $ _histogramVariance s) ** 0.5
+      then (calculateVariance c $ snd $ histogramVariance s) ** 0.5
       else 0
-      where c = _histogramCount s
+      where c = histogramCount s
 
 -- | Get the variance of all samples.
 variance :: Histogram -> Double
@@ -93,24 +93,24 @@ variance = go
   where
     go s = if c <= 1
       then 0
-      else calculateVariance c $ snd $ _histogramVariance s
-      where c = _histogramCount s
+      else calculateVariance c $ snd $ histogramVariance s
+      where c = histogramCount s
 
 -- | Get the minimum value of all samples.
 minVal :: Histogram -> Double
-minVal = _histogramMinVal
+minVal = histogramMinVal
 
 -- | Get the maximum value of all samples
 maxVal :: Histogram -> Double
-maxVal = _histogramMaxVal
+maxVal = histogramMaxVal
 
 -- | Get the number of samples that the histogram has been updated with.
 count :: Histogram -> Int
-count = _histogramCount
+count = histogramCount
 
 -- | Get a snapshot of the current reservoir's samples.
 snapshot :: Histogram -> Snapshot
-snapshot = R.snapshot . _histogramReservoir
+snapshot = R.snapshot . histogramReservoir
 
 calculateVariance :: Int -> Double -> Double
 calculateVariance c v = if c <= 1 then 0 else v / (fromIntegral c - 1)
@@ -123,3 +123,4 @@ updateVariance count c (x, y) = (l, r)
     diff = c - x
     l = x + diff / c'
     r = y + diff * (c - l)
+

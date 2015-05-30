@@ -11,18 +11,18 @@ import Data.Time.Clock
 --
 -- The two standard implementations are the ExponentiallyDecayingReservoir and the UniformReservoir.
 data Reservoir = forall s. Reservoir
-  { _reservoirClear :: !(NominalDiffTime -> s -> s)
+  { reservoirClear :: !(NominalDiffTime -> s -> s)
   -- ^ An operation that resets a reservoir to its initial state
-  , _reservoirSize :: !(s -> Int)
+  , reservoirSize :: !(s -> Int)
   -- ^ Retrieve current size of the reservoir.
   -- This may or may not be constant depending on the specific implementation.
-  , _reservoirSnapshot :: !(s -> Snapshot)
+  , reservoirSnapshot :: !(s -> Snapshot)
   -- ^ Take snapshot of the current reservoir.
   --
   -- The number of items in the snapshot should always match the reservoir's size.
-  , _reservoirUpdate :: !(Double -> NominalDiffTime -> s -> s)
+  , reservoirUpdate :: !(Double -> NominalDiffTime -> s -> s)
   -- ^ Add a new value to the reservoir, potentially evicting old values in the prcoess.
-  , _reservoirState :: !s
+  , reservoirState :: !s
   -- ^ The internal state of the reservoir.
   }
 
