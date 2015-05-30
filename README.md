@@ -32,6 +32,9 @@ Areas that could use contributions:
   - [ ] Graphite
   - [ ] InfluxDB
   - [ ] ... anything else I've forgotten that's reasonably popular
+* WAI middleware
+* http-client integration
+* persistent / postgresql-simple integration
 * Automatic tracking for RTS / GC metrics
 
 ## License
