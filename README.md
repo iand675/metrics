@@ -22,6 +22,7 @@ Issues are located in the GitHub issue tracker.
 Areas that could use contributions:
 
 * Performance improvements for metrics under high contention
+* Any area that's missing parity with the Java library & makes sense for Haskell
 * Examples in the docs
 * More reporters! Would pretty much auto-merge support for:
   - [ ] StatsD
