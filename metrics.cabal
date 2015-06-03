@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                metrics
-version:             0.3.0.0
+version:             0.3.0.1
 synopsis:            High-performance application metric tracking
 description:
   A port of Coda Hale's excellent metrics library for the JVM
@@ -27,7 +27,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 source-repository    head
   type:                git
-  location:            http://github.com/sanetracker/metrics
+  location:            http://github.com/iand675/metrics
 
 library
   exposed-modules:     Data.HealthCheck
@@ -72,7 +72,7 @@ library
 
 test-suite             tests
   main-is:             Main.hs
-  -- other-modules:       CounterTest, ExponentiallyDecayingReservoirTest, GaugeTest, HistogramTest, MeterTest, RegistryTest, TimerTest
+  other-modules:       CounterTest, EDR, EWMA, GaugeTest, HistogramTest, MeterTest, RegistryTest, TimerTest
   hs-source-dirs:      tests
   type:                exitcode-stdio-1.0
   build-depends:       base,
