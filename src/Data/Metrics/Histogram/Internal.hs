@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 -- | The pure interface for histograms.
 -- This module is typically not as useful as the stateful implementation
 -- since reservoir updates require retrieving the current time.
@@ -116,11 +117,10 @@ calculateVariance :: Int -> Double -> Double
 calculateVariance c v = if c <= 1 then 0 else v / (fromIntegral c - 1)
 
 updateVariance :: Int -> Double -> (Double, Double) -> (Double, Double)
-updateVariance _ c (-1, y) = (c, 0)
+updateVariance _ !c (-1, y) = (c, 0)
 updateVariance count c (x, y) = (l, r)
   where
     c' = fromIntegral count
     diff = c - x
-    l = x + diff / c'
-    r = y + diff * (c - l)
-
+    !l = x + diff / c'
+    !r = y + diff * (c - l)
