@@ -29,17 +29,21 @@ data Reservoir = forall s. Reservoir
 -- | Reset a reservoir to its initial state.
 clear :: NominalDiffTime -> Reservoir -> Reservoir
 clear t (Reservoir c size ss u st) = Reservoir c size ss u (c t st)
+{-# INLINEABLE clear #-}
 
 -- | Get the current number of elements in the reservoir
 size :: Reservoir -> Int
 size (Reservoir _ size _ _ st) = size st
+{-# INLINEABLE size #-}
 
 -- | Get a copy of all elements in the reservoir.
 snapshot :: Reservoir -> Snapshot
 snapshot (Reservoir _ _ ss _ st) = ss st
+{-# INLINEABLE snapshot #-}
 
 -- | Update a reservoir with a new value.
 --
 -- N.B. for some reservoir types, the latest value is not guaranteed to be retained in the reservoir.
 update :: Double -> NominalDiffTime -> Reservoir -> Reservoir
 update x t (Reservoir c size ss u st) = Reservoir c size ss u (u x t st)
+{-# INLINEABLE update #-}

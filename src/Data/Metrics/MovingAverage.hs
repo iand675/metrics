@@ -26,16 +26,20 @@ data MovingAverage = forall s. MovingAverage
 -- | Reset a moving average back to a starting state.
 clear :: MovingAverage -> MovingAverage
 clear (MovingAverage c u t r s) = MovingAverage c u t r (c s)
+{-# INLINEABLE clear #-}
 
 -- | Get the current rate of the moving average.
 rate :: MovingAverage -> Double
 rate (MovingAverage _ _ _ r s) = r s
+{-# INLINEABLE rate #-}
 
 -- | Update the average based upon an interval specified by the
 -- moving average implementation.
 tick :: MovingAverage -> MovingAverage
 tick (MovingAverage c u t r s) = MovingAverage c u t r (t s)
+{-# INLINEABLE tick #-}
 
 -- | Update the average with the specified value.
 update :: Double -> MovingAverage -> MovingAverage
 update x (MovingAverage c u t r s) = MovingAverage c u t r (u x s)
+{-# INLINEABLE update #-}

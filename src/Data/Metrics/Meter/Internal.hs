@@ -21,7 +21,7 @@ import Data.Time.Clock
 import qualified Data.Metrics.MovingAverage as M
 
 data Meter = Meter
-  { meterCount             :: !Int
+  { meterCount             :: {-# UNPACK #-} !Int
   , meterOneMinuteRate     :: !M.MovingAverage
   , meterFiveMinuteRate    :: !M.MovingAverage
   , meterFifteenMinuteRate :: !M.MovingAverage
@@ -52,6 +52,7 @@ mark t c m = ticked
   where
     updateMeter = M.update $ fromIntegral c
     ticked = tickIfNecessary t m
+{-# INLINEABLE mark #-}
 
 clear :: NominalDiffTime -> Meter -> Meter
 clear t =
@@ -61,9 +62,11 @@ clear t =
   (oneMinuteRate %~ M.clear) .
   (fiveMinuteRate %~ M.clear) .
   (fifteenMinuteRate %~ M.clear)
+{-# INLINEABLE clear #-}
 
 tick :: Meter -> Meter
 tick = (oneMinuteRate %~ M.tick) . (fiveMinuteRate %~ M.tick) . (fifteenMinuteRate %~ M.tick)
+{-# INLINEABLE tick #-}
 
 tickIfNecessary :: NominalDiffTime -> Meter -> Meter
 tickIfNecessary new d = if age >= 5
@@ -73,6 +76,7 @@ tickIfNecessary new d = if age >= 5
     age = new - meterLastTick d
     swapped = meterLastTick d < new
     latest = Prelude.max (meterLastTick d) new
+{-# INLINEABLE tickIfNecessary #-}
 
 meanRate :: NominalDiffTime -> Meter -> Double
 meanRate t d = if c == 0
@@ -82,6 +86,7 @@ meanRate t d = if c == 0
     c = meterCount d
     start = meterStartTime d
     elapsed = fromEnum t - fromEnum start
+{-# INLINEABLE meanRate #-}
 
 oneMinuteAverage :: Meter -> M.MovingAverage
 oneMinuteAverage = meterOneMinuteRate

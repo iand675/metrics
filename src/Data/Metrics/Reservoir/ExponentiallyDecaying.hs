@@ -47,7 +47,7 @@ data ExponentiallyDecayingReservoir = ExponentiallyDecayingReservoir
   { exponentiallyDecayingReservoirInnerSize        :: {-# UNPACK #-} !Int
   , exponentiallyDecayingReservoirAlpha            :: {-# UNPACK #-} !Double
   , exponentiallyDecayingReservoirRescaleThreshold :: {-# UNPACK #-} !Word64
-  , exponentiallyDecayingReservoirInnerReservoir   :: {-# UNPACK #-} !(M.Map Double Double)
+  , exponentiallyDecayingReservoirInnerReservoir   :: !(M.Map Double Double)
   , exponentiallyDecayingReservoirCount            :: {-# UNPACK #-} !Int
   , exponentiallyDecayingReservoirStartTime        :: {-# UNPACK #-} !Word64
   , exponentiallyDecayingReservoirNextScaleTime    :: {-# UNPACK #-} !Word64
@@ -87,6 +87,7 @@ clear = go
       where
         t' = truncate t
         t'' = t' + c ^. rescaleThreshold
+{-# INLINEABLE clear #-}
 
 -- | Get the current size of the reservoir.
 size :: ExponentiallyDecayingReservoir -> Int
@@ -96,6 +97,7 @@ size = go
       where
         c = r ^. count
         s = r ^. innerSize
+{-# INLINEABLE size #-}
 
 -- | Get a snapshot of the current reservoir
 snapshot :: ExponentiallyDecayingReservoir -> Snapshot
@@ -103,9 +105,11 @@ snapshot r = runST $ do
   let svals = V.fromList $ M.elems $ r ^. innerReservoir
   mvals <- V.unsafeThaw svals
   takeSnapshot mvals
+{-# INLINEABLE snapshot #-}
 
 weight :: Double -> Word64 -> Double
 weight alpha t = exp (alpha * fromIntegral t)
+{-# INLINE weight #-}
 
 -- | \"A common feature of the above techniques—indeed, the key technique that
 -- allows us to track the decayed weights efficiently – is that they maintain
@@ -134,6 +138,7 @@ rescale now c = c & startTime .~ now & nextScaleTime .~ st & count .~ M.size adj
     adjustKey x = x * exp (-_alpha * fromIntegral diff)
     adjustedReservoir = M.mapKeys adjustKey $ c ^. innerReservoir
     _alpha = c ^. alpha
+{-# INLINEABLE rescale #-}
 
 -- | Insert a new sample into the reservoir. This may cause old sample values to be evicted
 -- based upon the probabilistic weighting given to the key at insertion time.
@@ -163,4 +168,5 @@ update v t c = rescaled & seed .~ s' & count .~ newCount & innerReservoir .~ add
       p <- uniform g
       s' <- save g
       return (p :: Double, s')
+{-# INLINEABLE update #-}
 

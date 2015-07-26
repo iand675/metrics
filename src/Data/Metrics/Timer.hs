@@ -1,7 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances   #-}
 -- | A timer is basically a histogram of the duration of a type of event and a meter of the rate of its occurrence.
 module Data.Metrics.Timer (
   Timer,
@@ -13,6 +15,7 @@ module Data.Metrics.Timer (
 import Control.Applicative
 import Control.Lens
 import Control.Lens.TH
+import Control.Monad.Base
 import Control.Monad.Primitive
 import qualified Data.Metrics.MovingAverage.ExponentiallyWeighted as E
 import qualified Data.Metrics.Histogram.Internal as H
@@ -28,54 +31,56 @@ import System.Random.MWC
 
 -- | A measure of time statistics for the duration of an event
 data Timer m = Timer
-  { fromTimer :: !(MutVar (PrimState m) P.Timer) -- ^ A reference to the pure timer internals
-  , timerGetTime :: !(m NominalDiffTime) -- ^ The function that provides time differences for the timer. In practice, this is usually just "getPOSIXTime"
+  { fromTimer    :: !(MutVar (PrimState m) P.Timer)
+  -- ^ A reference to the pure timer internals
+  , timerGetTime :: !(m NominalDiffTime)
+  -- ^ The function that provides time differences for the timer. In practice, this is usually just "getPOSIXTime"
   }
 
 makeFields ''Timer
 
-instance PrimMonad m => Clear m (Timer m) where
-  clear t = do
+instance (MonadBase b m, PrimMonad b) => Clear b m (Timer b) where
+  clear t = liftBase $ do
     ts <- timerGetTime t
     updateRef (fromTimer t) $ P.clear ts
 
-instance PrimMonad m => Update m (Timer m) Double where
-  update t x = do
+instance (MonadBase b m, PrimMonad b) => Update b m (Timer b) Double where
+  update t x = liftBase $ do
     ts <- timerGetTime t
     updateRef (fromTimer t) $ P.update ts x
 
-instance PrimMonad m => Count m (Timer m) where
-  count t = readMutVar (fromTimer t) >>= return . P.count
+instance (MonadBase b m, PrimMonad b) => Count b m (Timer b) where
+  count t = liftBase $ fmap P.count $ readMutVar (fromTimer t)
 
-instance (Functor m, PrimMonad m) => Statistics m (Timer m) where
-  mean t = applyWithRef (fromTimer t) P.mean
-  stddev t = applyWithRef (fromTimer t) P.stddev
-  variance t = applyWithRef (fromTimer t) P.variance
-  maxVal t = P.maxVal <$> readMutVar (fromTimer t)
-  minVal t = P.minVal <$> readMutVar (fromTimer t)
+instance (MonadBase b m, PrimMonad b) => Statistics b m (Timer b) where
+  mean t = liftBase $ applyWithRef (fromTimer t) P.mean
+  stddev t = liftBase $ applyWithRef (fromTimer t) P.stddev
+  variance t = liftBase $ applyWithRef (fromTimer t) P.variance
+  maxVal t = liftBase $ P.maxVal <$> readMutVar (fromTimer t)
+  minVal t = liftBase $ P.minVal <$> readMutVar (fromTimer t)
 
-instance PrimMonad m => Rate m (Timer m) where
-  oneMinuteRate t = do
+instance (MonadBase b m, PrimMonad b) => Rate b m (Timer b) where
+  oneMinuteRate t = liftBase $ do
     ts <- timerGetTime t
     updateAndApplyToRef (fromTimer t) (P.tickIfNecessary ts) P.oneMinuteRate
-  fiveMinuteRate t = do
+  fiveMinuteRate t = liftBase $ do
     ts <- timerGetTime t
     updateAndApplyToRef (fromTimer t) (P.tickIfNecessary ts) P.fiveMinuteRate
-  fifteenMinuteRate t = do
+  fifteenMinuteRate t = liftBase $ do
     ts <- timerGetTime t
     updateAndApplyToRef (fromTimer t) (P.tickIfNecessary ts) P.fifteenMinuteRate
-  meanRate t = do
+  meanRate t = liftBase $ do
     ts <- timerGetTime t
     applyWithRef (fromTimer t) (P.meanRate ts)
 
-instance PrimMonad m => TakeSnapshot m (Timer m) where
-  snapshot t = applyWithRef (fromTimer t) P.snapshot
+instance (MonadBase b m, PrimMonad b) => TakeSnapshot b m (Timer b) where
+  snapshot t = liftBase $ applyWithRef (fromTimer t) P.snapshot
 
 -- | Create a timer using a custom function for retrieving the current time.
 --
 -- This is mostly exposed for testing purposes: prefer using "timer" if possible.
-mkTimer :: PrimMonad m => m NominalDiffTime -> Seed -> m (Timer m)
-mkTimer mt s = do
+mkTimer :: (MonadBase b m, PrimMonad b) => b NominalDiffTime -> Seed -> m (Timer b)
+mkTimer mt s = liftBase $ do
   t <- mt
   let ewmaMeter = M.meterData (E.movingAverage 5) t
   let histogram = H.histogram $ R.reservoir 0.015 1028 t s
@@ -85,19 +90,19 @@ mkTimer mt s = do
 -- | Create a standard "Timer" with an 
 -- exponentially weighted moving average
 -- and an exponentially decaying histogram
-timer :: IO (Timer IO)
-timer = do
+timer :: MonadBase IO m => m (Timer IO)
+timer = liftBase $ do
   s <- withSystemRandom (asGenIO $ save)
   mkTimer getPOSIXTime s
 
 -- | Execute an action and record statistics about the
 -- duration of the event and the rate of event occurrence.
-time :: Timer IO -> IO a -> IO a
+time :: MonadBase IO m => Timer IO -> m a -> m a
 time t m = do
   let gt = t ^. getTime
-  ts <- gt
+  ts <- liftBase gt
   r <- m
-  tf <- gt
+  tf <- liftBase gt
   update t $ realToFrac $ tf - ts
   return r
 

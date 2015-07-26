@@ -39,17 +39,18 @@ import Data.Metrics.Types (Minutes)
 --
 -- This type encapsulates the state needed for the exponentially weighted "MovingAverage" implementation.
 data ExponentiallyWeightedMovingAverage = ExponentiallyWeightedMovingAverage
-  { exponentiallyWeightedMovingAverageUncounted   :: !Double
-  , exponentiallyWeightedMovingAverageCurrentRate :: !Double
+  { exponentiallyWeightedMovingAverageUncounted   :: {-# UNPACK #-} !Double
+  , exponentiallyWeightedMovingAverageCurrentRate :: {-# UNPACK #-} !Double
   , exponentiallyWeightedMovingAverageInitialized :: !Bool
-  , exponentiallyWeightedMovingAverageInterval    :: !Double
-  , exponentiallyWeightedMovingAverageAlpha       :: !Double
+  , exponentiallyWeightedMovingAverageInterval    :: {-# UNPACK #-} !Double
+  , exponentiallyWeightedMovingAverageAlpha       :: {-# UNPACK #-} !Double
   } deriving (Show)
 
 makeFields ''ExponentiallyWeightedMovingAverage
 
 makeAlpha :: Double -> Minutes -> Double
 makeAlpha i m = 1 - exp (negate i / 60 / fromIntegral m)
+{-# INLINE makeAlpha #-}
 
 -- | Create a new "MovingAverage" with 5 second tick intervals for a one-minute window.
 new1MinuteMovingAverage :: MA.MovingAverage
@@ -76,20 +77,24 @@ movingAverage i m = MA.MovingAverage
 -- | Reset the moving average rate to zero.
 clear :: ExponentiallyWeightedMovingAverage -> ExponentiallyWeightedMovingAverage
 clear = (initialized .~ False) . (currentRate .~ 0) . (uncounted .~ 0)
+{-# INLINEABLE clear #-}
 
 -- | Get the current rate of the "ExponentiallyWeightedMovingAverage" for the given window.
 rate :: ExponentiallyWeightedMovingAverage -> Double
 rate e = (e ^. currentRate) * (e ^. interval)
+{-# INLINEABLE rate #-}
 
 -- | Create a new "ExpontiallyWeightedMovingAverage" with the given tick interval and averaging window.
 empty :: Double -- ^ The interval in seconds between ticks
   -> Minutes -- ^ The duration in minutes which the moving average covers
   -> ExponentiallyWeightedMovingAverage
 empty i m = ExponentiallyWeightedMovingAverage 0 0 False i $ makeAlpha i m
+{-# INLINEABLE empty #-}
 
 -- | Update the moving average based upon the given value
 update :: Double -> ExponentiallyWeightedMovingAverage -> ExponentiallyWeightedMovingAverage
 update = (uncounted +~)
+{-# INLINEABLE update #-}
 
 -- | Update the moving average as if the given interval between ticks has passed.
 tick :: ExponentiallyWeightedMovingAverage -> ExponentiallyWeightedMovingAverage
@@ -99,3 +104,4 @@ tick e = uncounted .~ 0 $ initialized .~ True $ updateRate e
     updateRate a = if a ^. initialized
       then currentRate +~ ((a ^. alpha) * (instantRate - a ^. currentRate)) $ a
       else currentRate .~ instantRate $ a
+{-# INLINEABLE tick #-}

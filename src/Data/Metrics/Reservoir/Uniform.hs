@@ -79,6 +79,7 @@ clear = go
       v' <- I.thaw v
       V.set v' 0
       I.unsafeFreeze v'
+{-# INLINEABLE clear #-}
 
 -- | Reset the reservoir to empty by performing an in-place modification of the reservoir.
 unsafeClear :: NominalDiffTime -> UniformReservoir -> UniformReservoir
@@ -89,12 +90,14 @@ unsafeClear = go
       v' <- I.unsafeThaw v
       V.set v' 0
       I.unsafeFreeze v'
+{-# INLINEABLE unsafeClear #-}
 
 -- | Get the current size of the reservoir
 size :: UniformReservoir -> Int
 size = go
   where
     go c = min (c ^. count) (I.length $ c ^. innerReservoir)
+{-# INLINEABLE size #-}
 
 -- | Take a snapshot of the reservoir by doing an in-place unfreeze.
 --
@@ -105,6 +108,7 @@ snapshot = go
     go c = runST $ do
       v' <- I.unsafeThaw $ c ^. innerReservoir
       S.takeSnapshot $ V.slice 0 (size c) v'
+{-# INLINEABLE snapshot #-}
 
 -- | Perform an update of the reservoir by copying the internal vector. O(n)
 update :: Double -> NominalDiffTime -> UniformReservoir -> UniformReservoir
@@ -126,6 +130,7 @@ update = go
           v'' <- I.unsafeFreeze v'
           s <- save g
           return (s, v'')
+{-# INLINEABLE update #-}
 
 -- | Perform an in-place update of the reservoir. O(1)
 unsafeUpdate :: Double -> NominalDiffTime -> UniformReservoir -> UniformReservoir
@@ -147,4 +152,5 @@ unsafeUpdate = go
           v'' <- I.unsafeFreeze v'
           s <- save g
           return (s, v'')
+{-# INLINEABLE unsafeUpdate #-}
 

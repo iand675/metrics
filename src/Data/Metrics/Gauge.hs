@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- | A module representing a "Gauge", which is simply an action that returns the instantaneous measure of a value for charting.
 --
 -- The action that provides the gauge's value may be replaced using "set", or read using "value".
@@ -20,6 +21,7 @@ module Data.Metrics.Gauge (
 ) where
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Base
 import Control.Monad.Primitive
 import qualified Data.HashMap.Strict as H
 import Data.Metrics.Internal
@@ -30,16 +32,18 @@ import Data.Primitive.MutVar
 newtype Gauge m = Gauge { fromGauge :: MV m (m Double) }
 
 -- | Create a new gauge from the given action.
-gauge :: PrimMonad m => m Double -> m (Gauge m)
+gauge :: (MonadBase b m, PrimMonad b) => b Double -> m (Gauge b)
 gauge m = do
-  r <- newMutVar m
+  r <- liftBase $ newMutVar m
   return $ Gauge r
 
-instance (PrimMonad m) => Value m (Gauge m) Double where
-  value (Gauge r) = join $ readMutVar r
+instance (MonadBase b m, PrimMonad b) => Value b m (Gauge b) Double where
+  value (Gauge r) = liftBase $ join $ readMutVar r
+  {-# INLINEABLE value #-}
 
-instance (PrimMonad m) => Set m (Gauge m) (m Double) where
-  set (Gauge r) = updateRef r . const
+instance (MonadBase b m, PrimMonad b) => Set b m (Gauge b) (b Double) where
+  set (Gauge r) = liftBase . updateRef r . const
+  {-# INLINEABLE set #-}
 
 -- | Compose multiple actions to create a ratio. Useful for graphing percentage information, e. g.
 --
@@ -49,3 +53,4 @@ instance (PrimMonad m) => Set m (Gauge m) (m Double) where
 -- @
 ratio :: Applicative f => f Double -> f Double -> f Double
 ratio x y = (/) <$> x <*> y
+

@@ -1,9 +1,11 @@
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE KindSignatures         #-}
 -- | The main accessors for common stateful metric implementation data.
 module Data.Metrics.Types where
 import Control.Concurrent.MVar
 import Control.Monad.Primitive
+import Data.Functor.Identity
 import Data.HashMap.Strict (HashMap)
 import Data.Metrics.Internal
 import Data.Metrics.Snapshot
@@ -15,12 +17,12 @@ import Data.Vector.Unboxed (Vector)
 type Minutes = Int
 
 -- | Get the current count for the given metric.
-class Count m a | a -> m where
+class Count (b :: * -> *) m a | m -> b, a -> b where
   -- | retrieve a count
   count :: a -> m Int
 
 -- | Provides statistics from a histogram that tracks the standard moving average rates.
-class Rate m a | a -> m where
+class Rate (b :: * -> *) m a | m -> b, a -> b where
   -- | Get the average rate of occurrence for some sort of event for the past minute.
   oneMinuteRate :: a -> m Double
   -- | Get the average rate of occurrence for some sort of event for the past five minutes.
@@ -31,23 +33,23 @@ class Rate m a | a -> m where
   meanRate :: a -> m Double
 
 -- | Gets the current value from a simple metric (i.e. a "Counter" or a "Gauge")
-class Value m a v | a -> m v where
+class Value (b :: * -> *) m a v | m -> b, a -> b v where
   value :: a -> m v
 
 -- | Update a metric by performing wholesale replacement of a value.
-class Set m a v | a -> m v where
+class Set (b :: * -> *) m a v | m -> b, a -> b v where
   -- | Replace the current value of a simple metric (i.e. a "Counter" or a "Gauge")
   set :: a -> v -> m ()
 
 -- | Provides a way to reset metrics. This might be useful in a development environment
 -- or to periodically get a clean state for long-running processes.
-class Clear m a | a -> m where
+class Clear (b :: * -> *) m a | m -> b, a -> b where
   -- | Reset the metric to an 'empty' state. In practice, this should be
   -- equivalent to creating a new metric of the same type in-place.
   clear :: a -> m ()
 
 -- | Provides the main interface for retrieving statistics tabulated by a histogram.
-class Statistics m a | a -> m where
+class Statistics (b :: * -> *) m a | m -> b, a -> b where
   -- | Gets the highest value encountered thus far.
   maxVal :: a -> m Double
   -- | Gets the lowest value encountered thus far.
@@ -61,11 +63,12 @@ class Statistics m a | a -> m where
   variance :: a -> m Double
 
 -- | Update statistics tracked by a metric with a new sample.
-class Update m a v | a -> m v where
+class Update (b :: * -> *) m a v | m -> b, a -> b v where
   -- | Feed a metric another value.
   update :: a -> v -> m ()
 
 -- | Take a snapshot (a sorted vector) of samples used for calculating quantile data.
-class TakeSnapshot m a | a -> m where
+class TakeSnapshot (b :: * -> *) m a | m -> b, a -> b where
   -- | Get a sample of the values currently in a histogram or type that contains a histogram.
   snapshot :: a -> m Snapshot
+

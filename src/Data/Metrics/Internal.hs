@@ -18,6 +18,7 @@ updateRef :: PrimMonad m => MV m a -> (a -> a) -> m ()
 updateRef r f = do
   b <- atomicModifyMutVar r (\x -> let (a, b) = (f x, ()) in (a, a `seq` b))
   b `seq` return b
+{-# INLINE updateRef #-}
 
 -- | Strictly apply a function on a MutVar while blocking other access to it.
 --
@@ -26,6 +27,7 @@ applyWithRef :: PrimMonad m => MV m a -> (a -> b) -> m b
 applyWithRef r f = do
   b <- atomicModifyMutVar r (\x -> let app = f x in let (a, b) = (x, app) in (a, a `seq` b))
   b `seq` return b
+{-# INLINE applyWithRef #-}
 
 -- | A function which combines the previous two, updating a value atomically
 -- and then returning some value calculated with the update in a single step.
@@ -37,6 +39,7 @@ updateAndApplyToRef r fa fb = do
     let (a, b) = (appA, appB) in
     (a, a `seq` b)
   b `seq` return b
+{-# INLINE updateAndApplyToRef #-}
 
 -- | MutVar (PrimState m) is a little verbose.
 type MV m = MutVar (PrimState m)

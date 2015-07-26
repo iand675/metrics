@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- | A meter measures the rate at which a set of events occur:
 --
 -- Meters measure the rate of the events in a few different ways. The mean rate is the average rate of events. It’s generally useful for trivia, but as it represents the total rate for your application’s entire lifetime (e.g., the total number of requests handled, divided by the number of seconds the process has been running), it doesn’t offer a sense of recency. Luckily, meters also record three different exponentially-weighted moving average rates: the 1-, 5-, and 15-minute moving averages.
@@ -13,6 +14,7 @@ module Data.Metrics.Meter (
   module Data.Metrics.Types
 ) where
 import Control.Lens
+import Control.Monad.Base
 import Control.Monad.Primitive
 import Data.Primitive.MutVar
 import Data.Time.Clock
@@ -26,36 +28,46 @@ import Data.Metrics.Types
 
 -- | A measure of the /rate/ at which a set of events occurs.
 data Meter m = Meter
-  { fromMeter :: !(MV m P.Meter)
+  { fromMeter       :: !(MV m P.Meter)
   , meterGetSeconds :: !(m NominalDiffTime)
   }
 
-instance PrimMonad m => Rate m (Meter m) where
-  oneMinuteRate m = do
+instance (MonadBase b m, PrimMonad b) => Rate b m (Meter b) where
+  oneMinuteRate m = liftBase $ do
     t <- meterGetSeconds m
     updateAndApplyToRef (fromMeter m) (P.tickIfNecessary t) (A.rate . P.oneMinuteAverage)
-  fiveMinuteRate m = do
+  {-# INLINEABLE oneMinuteRate #-}
+
+  fiveMinuteRate m = liftBase $ do
     t <- meterGetSeconds m
     updateAndApplyToRef (fromMeter m) (P.tickIfNecessary t) (A.rate . P.fiveMinuteAverage)
-  fifteenMinuteRate m = do
+  {-# INLINEABLE fiveMinuteRate #-}
+
+  fifteenMinuteRate m = liftBase $ do
     t <- meterGetSeconds m
     updateAndApplyToRef (fromMeter m) (P.tickIfNecessary t) (A.rate . P.fifteenMinuteAverage)
-  meanRate m = do
+  {-# INLINEABLE fifteenMinuteRate #-}
+
+  meanRate m = liftBase $ do
     t <- meterGetSeconds m
     applyWithRef (fromMeter m) $ P.meanRate t
+  {-# INLINEABLE meanRate #-}
 
-instance PrimMonad m => Count m (Meter m) where
-  count m = readMutVar (fromMeter m) >>= return . view P.count
+instance (MonadBase b m, PrimMonad m) => Count b m (Meter m) where
+  count = fmap (view P.count) . readMutVar . fromMeter
+  {-# INLINEABLE count #-}
 
 -- | Register multiple occurrences of an event.
 mark' :: PrimMonad m => Meter m -> Int -> m ()
 mark' m x = do
   t <- meterGetSeconds m
   updateRef (fromMeter m) (P.mark t x)
+{-# INLINEABLE mark' #-}
 
 -- | Register a single occurrence of an event.
 mark :: PrimMonad m => Meter m -> m ()
 mark = flip mark' 1
+{-# INLINEABLE mark #-}
 
 -- | Create a new meter using an exponentially weighted moving average
 meter :: IO (Meter IO)

@@ -22,11 +22,11 @@ import Data.Metrics.Snapshot (Snapshot)
 -- | A pure histogram that maintains a bounded reservoir of samples and basic statistical data about the samples.
 data Histogram = Histogram
   { histogramReservoir :: !R.Reservoir
-  , histogramCount :: !Int
-  , histogramMinVal :: !Double
-  , histogramMaxVal :: !Double
-  , histogramSum :: !Double
-  , histogramVariance :: !(Double, Double)
+  , histogramCount     :: {-# UNPACK #-} !Int
+  , histogramMinVal    :: {-# UNPACK #-} !Double
+  , histogramMaxVal    :: {-# UNPACK #-} !Double
+  , histogramSum       :: {-# UNPACK #-} !Double
+  , histogramVariance  :: {-# UNPACK #-} !(Double, Double)
   }
 
 -- | Create a histogram using a custom reservoir.
@@ -48,6 +48,7 @@ clear = go
       , histogramSum = 0
       , histogramVariance = (-1, 0)
       }
+{-# INLINEABLE clear #-}
 
 -- | Update statistics and the reservoir with a new sample.
 update :: Double -> NominalDiffTime -> Histogram -> Histogram
@@ -64,12 +65,15 @@ update = go
       where 
         updatedCount = succ $ histogramCount s
         updatedReservoir = R.update v t $ histogramReservoir s
+{-# INLINEABLE update #-}
 
 updateMin :: Double -> Double -> Double
 updateMin ox x = if isNaN ox || ox > x then x else ox
+{-# INLINE updateMin #-}
 
 updateMax :: Double -> Double -> Double
 updateMax ox x = if isNaN ox || ox < x then x else ox
+{-# INLINE updateMax #-}
 
 -- | Get the average of all samples since the histogram was created.
 mean :: Histogram -> Double
@@ -78,6 +82,7 @@ mean = go
     go s = if histogramCount s > 0
       then histogramSum s / fromIntegral (histogramCount s)
       else 0
+{-# INLINEABLE mean #-}
 
 -- | Get the standard deviation of all samples.
 stddev :: Histogram -> Double
@@ -87,6 +92,7 @@ stddev = go
       then (calculateVariance c $ snd $ histogramVariance s) ** 0.5
       else 0
       where c = histogramCount s
+{-# INLINEABLE stddev #-}
 
 -- | Get the variance of all samples.
 variance :: Histogram -> Double
@@ -96,6 +102,7 @@ variance = go
       then 0
       else calculateVariance c $ snd $ histogramVariance s
       where c = histogramCount s
+{-# INLINEABLE variance #-}
 
 -- | Get the minimum value of all samples.
 minVal :: Histogram -> Double
@@ -112,9 +119,11 @@ count = histogramCount
 -- | Get a snapshot of the current reservoir's samples.
 snapshot :: Histogram -> Snapshot
 snapshot = R.snapshot . histogramReservoir
+{-# INLINEABLE snapshot #-}
 
 calculateVariance :: Int -> Double -> Double
 calculateVariance c v = if c <= 1 then 0 else v / (fromIntegral c - 1)
+{-# INLINEABLE calculateVariance #-}
 
 updateVariance :: Int -> Double -> (Double, Double) -> (Double, Double)
 updateVariance _ !c (-1, y) = (c, 0)
@@ -124,3 +133,5 @@ updateVariance count c (x, y) = (l, r)
     diff = c - x
     !l = x + diff / c'
     !r = y + diff * (c - l)
+{-# INLINEABLE updateVariance #-}
+

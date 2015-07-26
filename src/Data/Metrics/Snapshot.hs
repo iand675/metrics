@@ -53,7 +53,7 @@ clamp x = if x > 1
 -- NB: this function uses "unsafeFreeze" under the hood, so be sure that the vector being
 -- snapshotted is not used after calling this function.
 takeSnapshot :: PrimMonad m => V.MVector (PrimState m) Double -> m Snapshot
-takeSnapshot v = V.clone v >>= \v' -> sort v' >> I.unsafeFreeze v' >>= return . Snapshot
+takeSnapshot v = fmap Snapshot (V.clone v >>= \v' -> sort v' >> I.unsafeFreeze v')
 
 -- | Calculate an arbitrary quantile value for a "Snapshot".
 -- Values below zero or greater than one will be clamped to the range [0, 1]
@@ -65,7 +65,7 @@ quantile quantile (Snapshot s) = if pos > fromIntegral (I.length s)
     else lower + (pos - fromIntegral (floor pos :: Int)) * (upper - lower)
   where
     q = clamp quantile
-    pos = q * (1 + (fromIntegral $ I.length s))
+    pos = q * (1 + fromIntegral (I.length s))
     pos' = truncate pos
     lower = I.unsafeIndex s (pos' - 1)
     upper = I.unsafeIndex s pos'
@@ -97,4 +97,5 @@ get99thPercentile = quantile p99Q
 -- | Calculate the 99.9th percentile of a "Snapshot"
 get999thPercentile :: Snapshot -> Double
 get999thPercentile = quantile p999Q
+
 
