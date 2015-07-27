@@ -12,20 +12,21 @@ module Data.Metrics.Histogram (
   histogram,
   exponentiallyDecayingHistogram,
   uniformHistogram,
+  uniformSampler,
   module Data.Metrics.Types
 ) where
-import Control.Monad.Base
-import Control.Monad.Primitive
+import           Control.Monad.Base
+import           Control.Monad.Primitive
 import qualified Data.Metrics.Histogram.Internal as P
-import Data.Metrics.Internal
-import Data.Metrics.Types
-import Data.Metrics.Reservoir (Reservoir)
-import Data.Metrics.Reservoir.Uniform (unsafeReservoir)
-import Data.Metrics.Reservoir.ExponentiallyDecaying (reservoir)
-import Data.Primitive.MutVar
-import Data.Time.Clock
-import Data.Time.Clock.POSIX
-import System.Random.MWC
+import           Data.Metrics.Internal
+import           Data.Metrics.Types
+import           Data.Metrics.Reservoir (Reservoir)
+import           Data.Metrics.Reservoir.Uniform (unsafeReservoir)
+import           Data.Metrics.Reservoir.ExponentiallyDecaying (reservoir)
+import           Data.Primitive.MutVar
+import           Data.Time.Clock
+import           Data.Time.Clock.POSIX
+import           System.Random.MWC
 
 -- | A measure of the distribution of values in a stream of data.
 data Histogram m = Histogram
@@ -93,5 +94,3 @@ exponentiallyDecayingHistogram = liftBase $ do
 uniformSampler :: Seed -> P.Histogram
 uniformSampler s = P.histogram (unsafeReservoir s 1028)
 
-nan :: Double
-nan = 0 / 0

@@ -11,6 +11,8 @@ module Data.Metrics.Meter (
   meter,
   mark,
   mark',
+  mkMeter,
+  fromMeter,
   module Data.Metrics.Types
 ) where
 import Control.Lens

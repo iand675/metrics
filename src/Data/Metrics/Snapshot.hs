@@ -42,11 +42,10 @@ p999Q :: Double
 p999Q = 0.999
 
 clamp :: Double -> Double
-clamp x = if x > 1
-  then 1
-  else if x < 0
-    then 0
-    else x
+clamp x | x > 1 = 1
+        | x < 0 = 0
+        | otherwise = x
+{-# INLINE clamp #-}
 
 -- | A utility function for snapshotting data from an unsorted "MVector" of samples.
 --

@@ -89,7 +89,7 @@ stddev :: Histogram -> Double
 stddev = go
   where
     go s = if c > 0
-      then (calculateVariance c $ snd $ histogramVariance s) ** 0.5
+      then sqrt $ calculateVariance c $ snd $ histogramVariance s
       else 0
       where c = histogramCount s
 {-# INLINEABLE stddev #-}

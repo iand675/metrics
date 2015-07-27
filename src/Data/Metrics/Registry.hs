@@ -49,7 +49,7 @@ instance Register (Counter IO) where
       Nothing -> do
         c <- m
         putMVar (metrics r) $! H.insert t (MetricCounter c) hm
-        return $! Just c
+        return $ Just c
       Just im -> do
         putMVar (metrics r) hm
         return $! case im of
@@ -63,7 +63,7 @@ instance Register (Gauge IO) where
       Nothing -> do
         g <- m
         putMVar (metrics r) $! H.insert t (MetricGauge g) hm
-        return $! Just g
+        return $ Just g
       Just im -> do
         putMVar (metrics r) hm
         return $! case im of
@@ -77,7 +77,7 @@ instance Register (Histogram IO) where
       Nothing -> do
         h <- m
         putMVar (metrics r) $! H.insert t (MetricHistogram h) hm
-        return $! Just h
+        return $ Just h
       Just im -> do
         putMVar (metrics r) hm
         return $! case im of
@@ -91,7 +91,7 @@ instance Register (Meter IO) where
       Nothing -> do
         mv <- m
         putMVar (metrics r) $! H.insert t (MetricMeter mv) hm
-        return $! Just mv
+        return $ Just mv
       Just im -> do
         putMVar (metrics r) hm
         return $! case im of
@@ -105,7 +105,7 @@ instance Register (Timer IO) where
       Nothing -> do
         mv <- m
         putMVar (metrics r) $! H.insert t (MetricTimer mv) hm
-        return $! Just mv
+        return $ Just mv
       Just im -> do
         putMVar (metrics r) hm
         return $! case im of

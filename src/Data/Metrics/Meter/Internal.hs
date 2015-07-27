@@ -13,7 +13,8 @@ module Data.Metrics.Meter.Internal (
   fiveMinuteAverage,
   fifteenMinuteAverage,
   tickIfNecessary,
-  count
+  count,
+  lastTick
 ) where
 import Control.Lens
 import Control.Lens.TH

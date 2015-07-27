@@ -1,11 +1,12 @@
 module HistogramTest where
 import Control.Concurrent.Async
-import Data.Metrics.Histogram.Internal
+import Control.Monad
+import Data.Metrics.Histogram
+-- import Data.Metrics.Histogram.Internal hiding (update, minVal, maxVal, mean, )
 import Data.Metrics.Snapshot
-import Data.Metrics.Types
 import System.Random.MWC
-import System.Posix.Time
 import Test.QuickCheck
+import Test.HUnit
 
 histogramTests :: [Test]
 histogramTests =
@@ -37,9 +38,9 @@ withUniform f = do
 
 withExponential :: (Histogram IO -> IO a) -> IO a
 withExponential f = do
-  seed <- withSystemRandom (asGenIO save)
-  t <- epochTime
-  h <- exponentiallyDecayingHistogram t seed
+  -- seed <- withSystemRandom (asGenIO save)
+  -- t <- epochTime
+  h <- exponentiallyDecayingHistogram -- t seed
   f h
 
 uniformTest :: Assertable a => String -> (Histogram IO -> IO a) -> Test
@@ -72,14 +73,14 @@ testUniformSampleMean = uniformTest "uniform mean value" $ \h -> do
 testUniformSampleMeanThreaded :: Test
 testUniformSampleMeanThreaded = uniformTest "async uniform mean value" $ \h -> do
   let task = update h 5 >> update h 10
-  asyncs <- sequence $ replicate 10 (async $ task)
+  asyncs <- replicateM 10 (async task)
   mapM_ wait asyncs
   x <- mean h
   assert $ x == 7.5
 
 testUniformSample2000 :: Test
 testUniformSample2000 = uniformTest "uniform sample 2000" $ \h -> do
-  mapM_ (update h $) [0..1999]
+  mapM_ (update h) [0..1999]
   x <- maxVal h
   assert $ x == 1999
 
@@ -89,14 +90,14 @@ testUniformSample2000 = uniformTest "uniform sample 2000" $ \h -> do
 
 testUniformSampleSnapshot :: Test
 testUniformSampleSnapshot = uniformTest "uniform snapshot" $ \h -> do
-  mapM_ (update h $) [0..99]
+  mapM_ (update h) [0..99]
   s <- snapshot h
   assert $ median s == 49.5
 
 testUniformSampleSnapshotThreaded :: Test
 testUniformSampleSnapshotThreaded = uniformTest "async uniform snapshot" $ \h -> do
-  let task = mapM_ (update h $) [0..99]
-  asyncs <- sequence $ replicate 10 (async $ task)
+  let task = mapM_ (update h) [0..99]
+  asyncs <- replicateM 10 (async task)
   mapM_ wait asyncs
   s <- snapshot h
   assertEqual "median" 49.5 $ median s
@@ -125,14 +126,14 @@ testExponentialSampleMean = exponentialTest "mean" $ \h -> do
 testExponentialSampleMeanThreaded :: Test
 testExponentialSampleMeanThreaded = exponentialTest "mean threaded" $ \h -> do
   let task = update h 5 >> update h 10
-  asyncs <- sequence $ replicate 10 (async $ task)
+  asyncs <- replicateM 10 (async task)
   mapM_ wait asyncs
   x <- mean h
   assertEqual "mean" 7.5 x
 
 testExponentialSample2000 :: Test
 testExponentialSample2000 = exponentialTest "sample 2000" $ \h -> do
-  mapM_ (update h $) [0..1999]
+  mapM_ (update h) [0..1999]
   x <- maxVal h
   assertEqual "max" 1999 x
 
@@ -142,14 +143,14 @@ testExponentialSample2000 = exponentialTest "sample 2000" $ \h -> do
 
 testExponentialSampleSnapshot :: Test
 testExponentialSampleSnapshot = exponentialTest "snapshot" $ \h -> do
-    mapM_ (update h $) [0..99]
+    mapM_ (update h) [0..99]
     s <- snapshot h
     assertEqual "median" 49.5 $ median s
 
 testExponentialSampleSnapshotThreaded :: Test
 testExponentialSampleSnapshotThreaded = exponentialTest "async snapshot" $ \h -> do
-  let task = mapM_ (update h $) [0..99]
-  asyncs <- sequence $ replicate 10 (async $ task)
+  let task = mapM_ (update h) [0..99]
+  asyncs <- replicateM 10 (async task)
   mapM_ wait asyncs
   s <- snapshot h
   assertEqual "median" 49.5 $ median s
