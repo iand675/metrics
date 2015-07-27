@@ -23,7 +23,6 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Base
 import Control.Monad.Primitive
-import qualified Data.HashMap.Strict as H
 import Data.Metrics.Internal
 import Data.Metrics.Types
 import Data.Primitive.MutVar

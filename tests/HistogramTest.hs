@@ -2,10 +2,8 @@ module HistogramTest where
 import Control.Concurrent.Async
 import Control.Monad
 import Data.Metrics.Histogram
--- import Data.Metrics.Histogram.Internal hiding (update, minVal, maxVal, mean, )
 import Data.Metrics.Snapshot
 import System.Random.MWC
-import Test.QuickCheck
 import Test.HUnit
 
 histogramTests :: [Test]
