@@ -12,7 +12,6 @@ module Data.Metrics.Snapshot (
   takeSnapshot
 ) where
 import Control.Monad.Primitive
-import Data.Primitive.MutVar
 import Data.Vector.Algorithms.Intro
 import qualified Data.Vector.Unboxed as I
 import qualified Data.Vector.Unboxed.Mutable as V
@@ -55,15 +54,17 @@ takeSnapshot :: PrimMonad m => V.MVector (PrimState m) Double -> m Snapshot
 takeSnapshot v = fmap Snapshot (V.clone v >>= \v' -> sort v' >> I.unsafeFreeze v')
 
 -- | Calculate an arbitrary quantile value for a "Snapshot".
--- Values below zero or greater than one will be clamped to the range [0, 1]
+-- Values below zero or greater than one will be clamped to the range [0, 1].
+-- Returns 0 if no values are in the snapshot
 quantile :: Double -> Snapshot -> Double
-quantile quantile (Snapshot s) = if pos > fromIntegral (I.length s)
-  then I.last s
-  else if pos' < 1
-    then I.head s
-    else lower + (pos - fromIntegral (floor pos :: Int)) * (upper - lower)
+quantile quant (Snapshot s)
+    | I.length s == 0 = 0
+    | pos > fromIntegral (I.length s) = I.last s
+    | pos' < 1 = I.head s
+    | otherwise =
+        lower + (pos - fromIntegral (floor pos :: Int)) * (upper - lower)
   where
-    q = clamp quantile
+    q = clamp quant
     pos = q * (1 + fromIntegral (I.length s))
     pos' = truncate pos
     lower = I.unsafeIndex s (pos' - 1)
