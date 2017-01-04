@@ -32,7 +32,7 @@ import Data.Metrics.Snapshot (Snapshot(..), takeSnapshot)
 import Data.Primitive.MutVar
 import qualified Data.Vector.Unboxed as V
 import Data.Word
-import System.Posix.Time
+import System.PosixCompat.Time
 import System.Posix.Types
 import System.Random.MWC
 

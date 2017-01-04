@@ -61,10 +61,10 @@ library
                        primitive,
                        mwc-random,
                        transformers-base,
-                       unix,
                        vector-algorithms,
                        containers,
                        time,
+                       unix-compat,
                        lens,
                        ansi-terminal,
                        bytestring
@@ -81,7 +81,6 @@ test-suite             tests
                        async,
                        mwc-random,
                        HUnit,
-                       unix,
                        QuickCheck,
                        primitive,
                        lens
