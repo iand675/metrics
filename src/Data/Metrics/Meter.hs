@@ -6,6 +6,20 @@
 -- Meters measure the rate of the events in a few different ways. The mean rate is the average rate of events. It’s generally useful for trivia, but as it represents the total rate for your application’s entire lifetime (e.g., the total number of requests handled, divided by the number of seconds the process has been running), it doesn’t offer a sense of recency. Luckily, meters also record three different exponentially-weighted moving average rates: the 1-, 5-, and 15-minute moving averages.
 --
 -- (Just like the Unix load averages visible in uptime or top.)
+--
+-- Meters are instances of the 'Rate' type-class, which provides the
+-- methods 'oneMinuteRate', 'fiveMinuteRate', 'fifteenMinuteRate' and
+-- 'meanRate' for retrieving the different rates from a meter.
+--
+-- Note that the methods 'oneMinuteRate', 'fiveMinuteRate' and
+-- 'fifteenMinuteRate' provide the respective exponentially weighted
+-- moving averages of rates as number of events per five second
+-- timeframe. Therefore, in order to obtain these rates as number of
+-- events per second, they need to be scaled by @0.2@.
+--
+-- On the other hand, the method 'meanRate' provides the mean rate as
+-- total number of events per picosecond. Thus, scaling this number by
+-- @10^12@ yields the mean rate as number of events per second.
 module Data.Metrics.Meter (
   Meter,
   meter,
