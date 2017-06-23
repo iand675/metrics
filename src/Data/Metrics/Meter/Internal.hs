@@ -28,18 +28,20 @@ data Meter = Meter
   , meterFifteenMinuteRate :: !M.MovingAverage
   , meterStartTime         :: !NominalDiffTime
   , meterLastTick          :: !NominalDiffTime
-  }
+  , meterTickInterval      :: {-# UNPACK #-} !Double
+  } deriving (Show)
 
 makeFields ''Meter
 
-meterData :: (Int -> M.MovingAverage) -> NominalDiffTime -> Meter
-meterData f t = Meter
+meterData :: Double -> (Double -> Int -> M.MovingAverage) -> NominalDiffTime -> Meter
+meterData ti f t = Meter
   { meterCount = 0
-  , meterOneMinuteRate = f 1
-  , meterFiveMinuteRate = f 5
-  , meterFifteenMinuteRate = f 15
+  , meterOneMinuteRate = f ti 1
+  , meterFiveMinuteRate = f ti 5
+  , meterFifteenMinuteRate = f ti 15
   , meterStartTime = t
   , meterLastTick = t
+  , meterTickInterval = ti
   }
 
 -- TODO: make moving average prism
@@ -47,7 +49,7 @@ meterData f t = Meter
 mark :: NominalDiffTime -> Int -> Meter -> Meter
 mark t c m = ticked
   & count +~ c
-  & oneMinuteRate %~ updateMeter 
+  & oneMinuteRate %~ updateMeter
   & fiveMinuteRate %~ updateMeter
   & fifteenMinuteRate %~ updateMeter
   where
@@ -70,11 +72,11 @@ tick = (oneMinuteRate %~ M.tick) . (fiveMinuteRate %~ M.tick) . (fifteenMinuteRa
 {-# INLINEABLE tick #-}
 
 tickIfNecessary :: NominalDiffTime -> Meter -> Meter
-tickIfNecessary new d = if age >= 5
-  then iterate tick (d { meterLastTick = latest }) !! (truncate age `div` 5)
+tickIfNecessary new d = if age >= meterTickInterval d
+  then iterate tick (d { meterLastTick = latest }) !! truncate (age / meterTickInterval d)
   else d
   where
-    age = new - meterLastTick d
+    age = realToFrac (new - meterLastTick d)
     swapped = meterLastTick d < new
     latest = Prelude.max (meterLastTick d) new
 {-# INLINEABLE tickIfNecessary #-}
@@ -82,11 +84,11 @@ tickIfNecessary new d = if age >= 5
 meanRate :: NominalDiffTime -> Meter -> Double
 meanRate t d = if c == 0
   then 0
-  else fromIntegral c / fromIntegral elapsed
+  else fromIntegral c / elapsed
   where
     c = meterCount d
     start = meterStartTime d
-    elapsed = fromEnum t - fromEnum start
+    elapsed = realToFrac (t - start)
 {-# INLINEABLE meanRate #-}
 
 oneMinuteAverage :: Meter -> M.MovingAverage

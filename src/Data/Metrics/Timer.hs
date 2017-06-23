@@ -82,7 +82,7 @@ instance (MonadBase b m, PrimMonad b) => TakeSnapshot b m (Timer b) where
 mkTimer :: (MonadBase b m, PrimMonad b) => b NominalDiffTime -> Seed -> m (Timer b)
 mkTimer mt s = liftBase $ do
   t <- mt
-  let ewmaMeter = M.meterData (E.movingAverage 5) t
+  let ewmaMeter = M.meterData 5 E.movingAverage t
   let histogram = H.histogram $ R.reservoir 0.015 1028 t s
   v <- newMutVar $ P.Timer ewmaMeter histogram
   return $ Timer v mt

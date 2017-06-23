@@ -79,9 +79,9 @@ clear :: ExponentiallyWeightedMovingAverage -> ExponentiallyWeightedMovingAverag
 clear = (initialized .~ False) . (currentRate .~ 0) . (uncounted .~ 0)
 {-# INLINEABLE clear #-}
 
--- | Get the current rate of the "ExponentiallyWeightedMovingAverage" for the given window.
+-- | Get the current rate (per second) of the "ExponentiallyWeightedMovingAverage" for the given window.
 rate :: ExponentiallyWeightedMovingAverage -> Double
-rate e = (e ^. currentRate) * (e ^. interval)
+rate e = e ^. currentRate
 {-# INLINEABLE rate #-}
 
 -- | Create a new "ExpontiallyWeightedMovingAverage" with the given tick interval and averaging window.

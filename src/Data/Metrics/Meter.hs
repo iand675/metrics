@@ -34,7 +34,7 @@ data Meter m = Meter
   , meterGetSeconds :: !(m NominalDiffTime)
   }
 
-instance (MonadBase b m, PrimMonad b) => Rate b m (Meter b) where
+instance {- (MonadBase b m, PrimMonad b) => -} Rate IO IO (Meter IO) where
   oneMinuteRate m = liftBase $ do
     t <- meterGetSeconds m
     updateAndApplyToRef (fromMeter m) (P.tickIfNecessary t) (A.rate . P.oneMinuteAverage)
@@ -52,6 +52,8 @@ instance (MonadBase b m, PrimMonad b) => Rate b m (Meter b) where
 
   meanRate m = liftBase $ do
     t <- meterGetSeconds m
+    m' <- readMutVar (fromMeter m)
+    print m'
     applyWithRef (fromMeter m) $ P.meanRate t
   {-# INLINEABLE meanRate #-}
 
@@ -87,5 +89,5 @@ mkMeter m = do
 -- | Make a pure meter using an exponentially weighted moving average
 ewmaMeter :: NominalDiffTime -- ^ The starting time of the meter.
   -> P.Meter
-ewmaMeter = P.meterData (EWMA.movingAverage 0.5)
+ewmaMeter = P.meterData 5 EWMA.movingAverage
 

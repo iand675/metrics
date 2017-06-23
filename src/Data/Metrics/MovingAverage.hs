@@ -23,6 +23,9 @@ data MovingAverage = forall s. MovingAverage
   -- ^ the internal implementation state of the moving average
   }
 
+instance Show MovingAverage where
+  show (MovingAverage _ _ _ r s) = "MovingAverage {movingAverageRate = " ++ show (r s) ++ "}"
+
 -- | Reset a moving average back to a starting state.
 clear :: MovingAverage -> MovingAverage
 clear (MovingAverage c u t r s) = MovingAverage c u t r (c s)
