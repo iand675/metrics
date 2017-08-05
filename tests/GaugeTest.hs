@@ -5,7 +5,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 
 gaugeTests :: [Property]
-gaugeTests = [ testValue, testSet, testRatio ]
+gaugeTests = [ testValue {-- , testSet, testRatio --} ]
 
 testValue :: Property
 testValue = label "test retrieving gauge value" $ monadicIO $ do

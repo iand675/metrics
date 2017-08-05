@@ -39,6 +39,6 @@ Areas that could use contributions:
 
 ## License
 
-Copyright (c) 2013-2015 Ian Duncan
+Copyright (c) 2013-2017 Ian Duncan
 
 Published under MIT License, see LICENSE

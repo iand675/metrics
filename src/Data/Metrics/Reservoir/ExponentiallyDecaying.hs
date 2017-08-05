@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Rank2Types #-}
 -- | A histogram with an exponentially decaying reservoir produces quantiles which are representative of (roughly) the last five minutes of data.
 -- It does so by using a forward-decaying priority reservoir with an exponential weighting towards newer data.

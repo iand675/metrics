@@ -53,7 +53,6 @@ instance {- (MonadBase b m, PrimMonad b) => -} Rate IO IO (Meter IO) where
   meanRate m = liftBase $ do
     t <- meterGetSeconds m
     m' <- readMutVar (fromMeter m)
-    print m'
     applyWithRef (fromMeter m) $ P.meanRate t
   {-# INLINEABLE meanRate #-}
 

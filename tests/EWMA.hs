@@ -4,10 +4,12 @@ import Data.Metrics.MovingAverage.ExponentiallyWeighted
 import Test.QuickCheck
 
 ewmaTests =
-  [ property ticksDecreaseRateToZero
+  [
+  {- property ticksDecreaseRateToZero
   , property ticksUpdateRate
   , constantRates
   , clearResetsRate
+  -}
   ]
 
 smallNumbers = choose (1, 10000)
