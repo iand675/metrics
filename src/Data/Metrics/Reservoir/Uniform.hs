@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | A histogram with a uniform reservoir produces quantiles which are valid for the entirely of the histogram’s lifetime.
 -- It will return a median value, for example, which is the median of all the values the histogram has ever been updated with.
 -- It does this by using an algorithm called Vitter’s R), which randomly selects values for the reservoir with linearly-decreasing probability.

@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                metrics
-version:             0.4.1.0
+version:             0.4.1.1
 synopsis:            High-performance application metric tracking
 description:
   A port of Coda Hale's excellent metrics library for the JVM
